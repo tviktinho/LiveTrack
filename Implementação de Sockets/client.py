@@ -8,7 +8,7 @@ import requests
 # Configuração do servidor
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 5000
-WEBSOCKET_SERVER = 'ws://127.0.0.1:6789'
+WEBSOCKET_SERVER = 'ws://localhost:6790'
 
 cached_location = None
 last_request_time = 0

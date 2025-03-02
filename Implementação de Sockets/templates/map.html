@@ -27,12 +27,18 @@
 
         function updateMarkers(data) {
             for (const [client, info] of Object.entries(data)) {
+                // Verifica se lat e lon são números válidos
+                if (typeof info.lat !== "number" || typeof info.lon !== "number" || isNaN(info.lat) || isNaN(info.lon)) {
+                    console.warn(`Coordenadas inválidas recebidas para ${client}:`, info);
+                    continue;  // Ignora esse cliente e evita erro
+                }
+
                 if (markers[client]) {
                     markers[client].setLatLng([info.lat, info.lon]);
                 } else {
                     markers[client] = L.marker([info.lat, info.lon], {
                         icon: L.icon({
-                            iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${info.color}.png`,
+                            iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${info.color || 'blue'}.png`,
                             iconSize: [25, 41],
                             iconAnchor: [12, 41]
                         })
@@ -43,29 +49,35 @@
 
         function updateClientList() {
             let clientList = document.getElementById('client-list');
+            var cont = 0;
             clientList.innerHTML = '';
             for (const client in markers) {
                 let li = document.createElement('li');
-                li.textContent = `Cliente ${client}`;
+                li.textContent = `Cliente  ${cont} ${client}`;
+                cont+=1;
                 clientList.appendChild(li);
             }
         }
 
-        // Exemplo de como você pode usar WebSocket para receber dados em tempo real
-        let socket = new WebSocket("ws://127.0.0.1:6789");  // Substitua pelo endereço do seu servidor WebSocket
+        // Conexão WebSocket
+        let socket = new WebSocket("ws://localhost:6790");  // Substitua pelo endereço do seu servidor WebSocket
 
         socket.onopen = function() {
             console.log("Conexão WebSocket estabelecida.");
         };
 
         socket.onmessage = function(event) {
-            let data = JSON.parse(event.data);
-            console.log("[DADOS RECEBIDOS]", data);
-            updateMarkers(data);
+            try {
+                let data = JSON.parse(event.data);
+                console.log("[DADOS RECEBIDOS]", data);
+                updateMarkers(data);
+            } catch (error) {
+                console.error("Erro ao processar mensagem WebSocket:", error);
+            }
         };
 
         socket.onerror = function(error) {
-            console.error(`WebSocket error: ${error}`);
+            console.error(`WebSocket error:`, error);
         };
 
         socket.onclose = function(event) {
