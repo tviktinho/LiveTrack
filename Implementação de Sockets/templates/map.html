@@ -52,15 +52,24 @@
         }
 
         // Exemplo de como você pode usar WebSocket para receber dados em tempo real
-        let socket = new WebSocket("ws://localhost:8000/data");  // Substitua pelo endereço do seu servidor WebSocket
+        let socket = new WebSocket("ws://127.0.0.1:6789");  // Substitua pelo endereço do seu servidor WebSocket
+
+        socket.onopen = function() {
+            console.log("Conexão WebSocket estabelecida.");
+        };
 
         socket.onmessage = function(event) {
             let data = JSON.parse(event.data);
+            console.log("[DADOS RECEBIDOS]", data);
             updateMarkers(data);
         };
 
         socket.onerror = function(error) {
             console.error(`WebSocket error: ${error}`);
+        };
+
+        socket.onclose = function(event) {
+            console.log("Conexão WebSocket fechada.");
         };
     </script>
 </body>
