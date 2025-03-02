@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Usuários</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map { height: 500px; width: 100%; }
+        #client-list { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h2>Mapa dos Usuários</h2>
+    <div id="map"></div>
+    <button onclick="updateClientList()">Atualizar Lista de Clientes</button>
+    <ul id="client-list"></ul>
+
+    <script>
+        let map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let markers = {};
+
+        function updateMarkers(data) {
+            for (const [client, info] of Object.entries(data)) {
+                if (markers[client]) {
+                    markers[client].setLatLng([info.lat, info.lon]);
+                } else {
+                    markers[client] = L.marker([info.lat, info.lon], {
+                        icon: L.icon({
+                            iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${info.color}.png`,
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41]
+                        })
+                    }).addTo(map).bindTooltip(`Cliente ${client}`);
+                }
+            }
+        }
+
+        function updateClientList() {
+            let clientList = document.getElementById('client-list');
+            clientList.innerHTML = '';
+            for (const client in markers) {
+                let li = document.createElement('li');
+                li.textContent = `Cliente ${client}`;
+                clientList.appendChild(li);
+            }
+        }
+
+        // Exemplo de como você pode usar WebSocket para receber dados em tempo real
+        let socket = new WebSocket("ws://localhost:8000/data");  // Substitua pelo endereço do seu servidor WebSocket
+
+        socket.onmessage = function(event) {
+            let data = JSON.parse(event.data);
+            updateMarkers(data);
+        };
+
+        socket.onerror = function(error) {
+            console.error(`WebSocket error: ${error}`);
+        };
+    </script>
+</body>
+</html>

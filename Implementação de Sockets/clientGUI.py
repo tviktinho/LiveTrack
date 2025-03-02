@@ -4,11 +4,11 @@ import time
 import requests
 
 # Configuração do cliente
-SERVER_HOST = '127.0.0.1' 
-SERVER_PORT = 5000
+SERVER_HOST = '127.0.0.1'  # Certifique-se de que este valor está correto
+SERVER_PORT = 5000  # Certifique-se de que este valor corresponde ao do servidor
 
 def get_real_gps_coordinates():
-    """Obtém a localização real através de uma API."""
+    """Obtém a localização real do sistema operacional."""
     try:
         response = requests.get("https://ipinfo.io/json").json()
         location = response["loc"].split(",")
@@ -28,7 +28,7 @@ def send_data(client):
         except:
             print("[ERRO] Falha ao enviar dados.")
             break
-        time.sleep(5)
+        time.sleep(5)  # Envia a cada 5 segundos
 
 def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -38,6 +38,7 @@ def start_client():
 
         thread_send = threading.Thread(target=send_data, args=(client,))
         thread_send.start()
+
         thread_send.join()
     except Exception as e:
         print(f"[ERRO] Não foi possível conectar ao servidor: {e}")
