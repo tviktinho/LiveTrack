@@ -26,7 +26,7 @@ COLOR_LIST = [
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/map')
+@app.route('/')
 def mapa():
     return render_template("map.html")
 
