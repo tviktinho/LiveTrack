@@ -6,11 +6,11 @@ O **LiveTrack** é um sistema distribuído projetado para permitir que um grupo 
 A aplicação consiste em um **servidor Flask**, um **cliente Electron** e utiliza **WebSockets e REST API** para comunicação entre as máquinas.
 
 ## **Funcionalidades**
-✅ **Captura de Localização**: Usuários compartilham sua localização periodicamente.
-✅ **Exibição em Tempo Real**: Mapa interativo mostra as localizações dos amigos.
-✅ **Conexão via WebSockets e HTTP**: Suporte para comunicação em tempo real.
-✅ **Grupos Privados**: Usuários podem compartilhar localização apenas com amigos.
-✅ **Suporte para Várias Máquinas**: Cliente pode rodar em qualquer dispositivo na rede.
+✅ **Captura de Localização**: Usuários compartilham sua localização periodicamente. 
+✅ **Exibição em Tempo Real**: Mapa interativo mostra as localizações dos amigos. 
+✅ **Conexão via WebSockets e HTTP**: Suporte para comunicação em tempo real. 
+✅ **Grupos Privados**: Usuários podem compartilhar localização apenas com amigos. 
+✅ **Suporte para Várias Máquinas**: Cliente pode rodar em qualquer dispositivo na rede. 
 
 ## **Tecnologias Utilizadas**
 - **Backend:** Flask (Python)
