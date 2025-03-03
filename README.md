@@ -77,5 +77,5 @@ Este projeto está sob a licença MIT.
 
 ---
 
-🔗 **Desenvolvido por [Seu Nome]**
+🔗 **Desenvolvido por Victor Brizante**
 
