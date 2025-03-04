@@ -5,7 +5,7 @@ import socket
 import asyncio
 import threading
 import websockets
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 
 # Configuração do servidor
@@ -39,12 +39,22 @@ def data():
                 for client_id, (lat, lon) in clients_locations.items()}
     return jsonify(data)
 
+@app.route("/update_location", methods=["POST"])
+def update_location():
+    data = request.json
+    return jsonify({"message": "Localização atualizada com sucesso!"}), 200
+
+@app.route("/shutdown")
+def shutdown():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func:
+        func()
+    return "Servidor encerrado"
 
 def handle_client(conn, addr):
     """Recebe dados do cliente e armazena a localização."""
     print(f"[NOVA CONEXÃO] {addr} conectado.")
 
-    # Gerar um ID único para o cliente
     client_id = f"{addr[0]}:{addr[1]}"
     
     with lock:
@@ -68,7 +78,6 @@ def handle_client(conn, addr):
             clients_colors.pop(client_id, None)
         conn.close()
 
-
 def start_tcp_server():
     """Servidor TCP para receber dados de localização"""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -91,25 +100,19 @@ def is_port_in_use(port):
 
 if is_port_in_use(WEBSOCKET_PORT):
     print(f"⚠️ A porta {WEBSOCKET_PORT} já está em uso. Finalize o processo antes de iniciar o servidor.")
-    #exit(1)  # Finaliza o script
     
-
-
-
 async def websocket_handler(websocket):
     try:
         while True:
-            # Criar um dicionário contendo todas as localizações
             with lock:
                 data = {
                     client_id: {"lat": lat, "lon": lon, "color": clients_colors.get(client_id, "gray")}
                     for client_id, (lat, lon) in clients_locations.items()
                 }
-            # Enviar as localizações para o cliente WebSocket
             await websocket.send(json.dumps(data))
             await asyncio.sleep(5)
-            await websocket.ping()  # Envia um ping para manter a conexão ativa
-            await asyncio.sleep(30)  # Aguarda 30 segundos antes do próximo ping
+            await websocket.ping()
+            await asyncio.sleep(30)
     except websockets.exceptions.ConnectionClosed:
         print("[WebSocket] Cliente desconectado.")
     except websockets.exceptions.ConnectionClosedOK:
@@ -119,20 +122,17 @@ async def websocket_handler(websocket):
 
 async def websocket_server():
     async with websockets.serve(websocket_handler, "0.0.0.0", WEBSOCKET_PORT):
-        await asyncio.Future()  # Mantém o servidor rodando indefinidamente
+        await asyncio.Future()
 
 def start_websocket_server():
-    loop = asyncio.new_event_loop()  # Criar um novo loop de eventos
-    asyncio.set_event_loop(loop)  # Definir o loop para a thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(websocket_server())  # Iniciar o servidor WebSocket
+        loop.run_until_complete(websocket_server())
     except Exception as e:
         print(f"Erro ao iniciar WebSocket: {e}")
     finally:
-        loop.close()  # Garante que o loop será fechado após uso
-
-
-
+        loop.close()
 
 if __name__ == "__main__":
     threading.Thread(target=start_websocket_server, daemon=True).start()
