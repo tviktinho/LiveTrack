@@ -8,9 +8,9 @@ import threading
 import websockets
 
 # Configuração do servidor
-SERVER_HOST = '127.0.0.1'
+SERVER_HOST = '15.229.12.108'
 SERVER_PORT = 5000
-WEBSOCKET_SERVER = 'ws://localhost:6790'
+WEBSOCKET_SERVER = 'ws://15.229.12.108:6790'
 
 cached_location = None
 last_request_time = 0

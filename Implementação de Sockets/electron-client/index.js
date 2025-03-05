@@ -26,7 +26,7 @@ function createWindow() {
         }
     });
 
-    win.loadURL('http://127.0.0.1:8000'); // Endereço do Flask
+    win.loadURL('http://15.229.12.108:8000'); // Endereço do Flask
 }
 
 app.whenReady().then(() => {
