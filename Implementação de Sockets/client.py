@@ -1,4 +1,5 @@
 import time
+import json
 import threading
 import socket
 import asyncio
@@ -13,7 +14,6 @@ WEBSOCKET_SERVER = 'ws://localhost:6790'
 
 cached_location = None
 last_request_time = 0
-
 
 def get_ip_based_location():
     global cached_location, last_request_time
@@ -66,19 +66,44 @@ def send_data_tcp(client):
         time.sleep(5)
 
 async def send_data_websocket():
-    """ Envia dados via WebSocket e tenta reconectar caso caia """
+    """ Envia dados via WebSocket e recebe dados de outros clientes """
     while True:
         try:
             async with websockets.connect(WEBSOCKET_SERVER) as websocket:
                 print("[WEBSOCKET] Conectado ao servidor")
-                while True:
-                    gps_data_ws = get_real_gps_coordinates()
-                    await websocket.send(gps_data_ws)
-                    print(f"[ENVIADO WS] {gps_data_ws}")
-                    await asyncio.sleep(5)  # Envia a cada 5 segundos
+                
+                # Criar uma task para enviar dados
+                send_task = asyncio.create_task(send_location_updates(websocket))
+                
+                # Receber dados de outros clientes
+                try:
+                    while True:
+                        data = await websocket.recv()
+                        message = json.loads(data)
+                        
+                        if message["type"] == "location_update":
+                            client_id = message["client_id"]
+                            lat = message["lat"]
+                            lon = message["lon"]
+                            print(f"[{client_id}]: {lat},{lon}")
+                except Exception as e:
+                    print(f"[ERRO] Falha ao receber dados: {e}")
+                    send_task.cancel()
+                    
         except Exception as e:
             print(f"[ERRO] WebSocket desconectado: {e}")
             await asyncio.sleep(5)  # Aguarda antes de tentar reconectar
+
+async def send_location_updates(websocket):
+    """ Envia atualizações de localização periodicamente """
+    try:
+        while True:
+            gps_data_ws = get_real_gps_coordinates()
+            await websocket.send(gps_data_ws)
+            print(f"[ENVIADO WS] {gps_data_ws}")
+            await asyncio.sleep(5)  # Envia a cada 5 segundos
+    except asyncio.CancelledError:
+        pass
         
 def start_websocket_thread():
     """ Inicia o WebSocket em uma thread separada """
