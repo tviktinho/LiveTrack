@@ -1,11 +1,11 @@
 import time
 import json
-import threading
 import socket
 import asyncio
-import websockets
-import requests
 import geocoder
+import requests
+import threading
+import websockets
 
 # Configuração do servidor
 SERVER_HOST = '127.0.0.1'
@@ -55,8 +55,9 @@ def get_real_gps_coordinates():
         return "0.0,0.0"
 
 def send_data_tcp(client):
+    """Envia dados de localização via TCP"""
     while True:
-        gps_data = get_ip_based_location()
+        gps_data = get_ip_based_location()  # Usa localização baseada no IP
         try:
             client.send(gps_data.encode('utf-8'))
             print(f"[ENVIADO TCP] {gps_data}")
@@ -64,6 +65,7 @@ def send_data_tcp(client):
             print(f"[ERRO] Falha ao enviar dados TCP: {e}")
             break
         time.sleep(5)
+
 
 async def send_data_websocket():
     """ Envia dados via WebSocket e recebe dados de outros clientes """
@@ -80,7 +82,6 @@ async def send_data_websocket():
                     while True:
                         data = await websocket.recv()
                         message = json.loads(data)
-                        
                         if message["type"] == "location_update":
                             client_id = message["client_id"]
                             lat = message["lat"]

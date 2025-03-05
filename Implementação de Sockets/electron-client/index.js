@@ -5,8 +5,9 @@ const path = require('path');
 let flaskProcess;
 
 function startFlask() {
-    let flaskScript = path.join(__dirname, '..', 'server.py'); // Caminho do Flask
-    flaskProcess = exec(`python ${flaskScript}`, (error, stdout, stderr) => {
+    const env = Object.assign({}, process.env, { 'PYTHONIOENCODING': 'utf-8' });
+    let startScript = path.resolve(__dirname, '..', 'start_server.bat');
+    flaskProcess = exec(`"${startScript}"`, { env, cwd: path.resolve(__dirname, '..') }, (error, stdout, stderr) => {
         if (error) {
             console.error(`Erro ao iniciar o Flask: ${error.message}`);
             return;
