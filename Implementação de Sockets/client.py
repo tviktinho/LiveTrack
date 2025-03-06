@@ -8,9 +8,14 @@ import threading
 import websockets
 
 # Configuração do servidor
-SERVER_HOST = '15.229.12.108'
+#SERVER_HOST = '15.229.12.108'
+#SERVER_PORT = 5000
+#WEBSOCKET_SERVER = 'ws://15.229.12.108:6790'
+
+# Configuração do servidor
+SERVER_HOST = '192.168.100.105'
 SERVER_PORT = 5000
-WEBSOCKET_SERVER = 'ws://15.229.12.108:6790'
+WEBSOCKET_SERVER = 'ws://localhost:6790'
 
 cached_location = None
 last_request_time = 0
@@ -64,7 +69,7 @@ def send_data_tcp(client):
         except Exception as e:
             print(f"[ERRO] Falha ao enviar dados TCP: {e}")
             break
-        time.sleep(5)
+        time.sleep(15)
 
 
 async def send_data_websocket():
@@ -102,7 +107,7 @@ async def send_location_updates(websocket):
             gps_data_ws = get_real_gps_coordinates()
             await websocket.send(gps_data_ws)
             print(f"[ENVIADO WS] {gps_data_ws}")
-            await asyncio.sleep(5)  # Envia a cada 5 segundos
+            await asyncio.sleep(15)  # Envia a cada 5 segundos
     except asyncio.CancelledError:
         pass
         
