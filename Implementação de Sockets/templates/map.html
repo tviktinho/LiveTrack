@@ -44,12 +44,14 @@
         Atualizar Lista de Clientes
       </button>
 
-      <ul id="client-list" class="list-group"></ul>
+      <ul id="client-list" class="list-group" onclick="zoomToClient()"></ul>
       <button id="markPointButton" class="btn btn-success">Marcar Ponto</button>
     </div>
 
     <script>
-      let map; // Declare map variable in the correct scope
+      let map;
+      let markers = {};
+      let socket;
 
       function initMap() {
         map = L.map("map").setView([-14.235, -51.9253], 4);
@@ -57,8 +59,6 @@
           attribution: "&copy; OpenStreetMap contributors",
         }).addTo(map);
       }
-
-      let markers = {};
 
       function updateMarkers(data) {
         for (const [client, info] of Object.entries(data)) {
@@ -92,10 +92,27 @@
         console.log("[DEBUG] Atualização de marcador para:", Object.keys(data));
       }
 
+      function zoomToClient(clientId) {
+        console.log("Buscando cliente:", clientId);
+        console.log("Clientes disponíveis:", Object.keys(markers));
+
+        const clientMarker = markers[clientId];
+        if (clientMarker) {
+          const latLng = clientMarker.getLatLng();
+          if (!latLng) {
+            console.error("Não foi possível obter coordenadas para", clientId);
+            return;
+          }
+          map.setView([latLng.lat, latLng.lng], 10);
+        } else {
+          console.error("Cliente não encontrado:", clientId);
+        }
+      }
+
       function updateMap(data) {
         const clientList = document.getElementById("client-list");
         clientList.innerHTML = "";
-        var cont = 0;
+        let cont = 0;
 
         for (const clientId in markers) {
           if (!data[clientId]) {
@@ -120,11 +137,10 @@
           let listItem = document.createElement("li");
           listItem.className = "list-group-item";
           listItem.textContent = `Cliente ${cont} ${client}`;
+          listItem.onclick = () => zoomToClient(client); // Correção: Passa client correto
           clientList.appendChild(listItem);
           cont += 1;
         }
-
-        console.log("[DEBUG] Clientes ativos:", Object.keys(markers));
       }
 
       function updateClientList() {
@@ -158,44 +174,12 @@
         }
       }
 
-      window.onload = function () {
-        initMap();
-        fetchData();
-        document
-          .getElementById("markPointButton")
-          .addEventListener("click", () => {
-            map.once('click', function(e) {
-              const lat = e.latlng.lat;
-              const lon = e.latlng.lng;
-              mark_point_on_map(lat, lon);
-              fetch("/mark_point", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ lat, lon }),
-              });
-            });
-            map.getContainer().style.cursor = 'crosshair'; // Change cursor to crosshair
-          });
-
-        map.on('click', function() {
-          map.getContainer().style.cursor = ''; // Reset cursor back to default
-        });
-
-        startWebSocket();
-      };
-
-      let socket;
-
       function startWebSocket() {
-        socket = new WebSocket("ws://localhost:6790");
+        let socket = new WebSocket("ws://localhost:6790");
 
-        socket.onopen = function () {
-          console.log("Conexão WebSocket estabelecida.");
-        };
+        socket.onopen = () => console.log("Conexão WebSocket estabelecida.");
 
-        socket.onmessage = function (event) {
+        socket.onmessage = (event) => {
           try {
             let data = JSON.parse(event.data);
             console.log("[DADOS RECEBIDOS]", data);
@@ -207,7 +191,7 @@
                   color: data.color || "blue",
                 },
               };
-              updateMarkers(clientData);
+              updateMap(clientData);
             } else {
               updateMap(data);
             }
@@ -216,12 +200,10 @@
           }
         };
 
-        socket.onerror = function (error) {
-          console.error(`WebSocket error:`, error);
-        };
+        socket.onerror = (error) => console.error("WebSocket error:", error);
 
-        socket.onclose = function (event) {
-          console.log("Conexão WebSocket fechada.");
+        socket.onclose = () => {
+          console.log("Conexão WebSocket fechada. Tentando reconectar...");
           setTimeout(startWebSocket, 5000);
         };
       }
@@ -232,6 +214,35 @@
         }
         startWebSocket();
       }
+
+      window.onload = function () {
+        initMap();
+        fetchData();
+        document
+          .getElementById("markPointButton")
+          .addEventListener("click", () => {
+            map.once("click", function (e) {
+              const lat = e.latlng.lat;
+              const lon = e.latlng.lng;
+              mark_point_on_map(lat, lon);
+              fetch("/mark_point", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ lat, lon }),
+              });
+            });
+            map.getContainer().style.cursor = "crosshair"; // Change cursor to crosshair
+          });
+
+        map.on("click", function () {
+          map.getContainer().style.cursor = ""; // Reset cursor back to default
+        });
+
+        startWebSocket();
+      };
+      
     </script>
   </body>
 </html>
