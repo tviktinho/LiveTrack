@@ -8,11 +8,6 @@ import threading
 import websockets
 
 # Configuração do servidor
-#SERVER_HOST = '15.229.12.108'
-#SERVER_PORT = 5000
-#WEBSOCKET_SERVER = 'ws://15.229.12.108:6790'
-
-# Configuração do servidor
 SERVER_HOST = '192.168.100.105'
 SERVER_PORT = 5000
 WEBSOCKET_SERVER = 'ws://localhost:6790'
@@ -45,7 +40,6 @@ def get_real_gps_coordinates():
             lat = response.latlng[0] if response.latlng else None
             lon = response.latlng[1] if response.latlng else None
             
-            # Se as coordenadas latitude e longitude estiverem disponíveis
             if lat is not None and lon is not None:
                 cached_location = f"{lat},{lon}"
                 last_request_time = current_time
@@ -71,7 +65,6 @@ def send_data_tcp(client):
             break
         time.sleep(15)
 
-
 async def send_data_websocket():
     """ Envia dados via WebSocket e recebe dados de outros clientes """
     while True:
@@ -92,6 +85,9 @@ async def send_data_websocket():
                             lat = message["lat"]
                             lon = message["lon"]
                             print(f"[{client_id}]: {lat},{lon}")
+                        elif message["type"] == "mark_point":
+                            # Logic to mark point on the map
+                            mark_point_on_map(message["lat"], message["lon"])
                 except Exception as e:
                     print(f"[ERRO] Falha ao receber dados: {e}")
                     send_task.cancel()
@@ -107,15 +103,19 @@ async def send_location_updates(websocket):
             gps_data_ws = get_real_gps_coordinates()
             await websocket.send(gps_data_ws)
             print(f"[ENVIADO WS] {gps_data_ws}")
-            await asyncio.sleep(15)  # Envia a cada 5 segundos
+            await asyncio.sleep(15)  # Envia a cada 15 segundos
     except asyncio.CancelledError:
         pass
-        
+
+def mark_point_on_map(lat, lon):
+    """ Logic to mark a point on the map with a different ping format """
+    # This function will be called when a point is marked
+    print(f"[MARCAR PONTO] Latitude: {lat}, Longitude: {lon}")
+
 def start_websocket_thread():
     """ Inicia o WebSocket em uma thread separada """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    #loop.run_until_complete(send_data_websocket())        
 
 def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -50,18 +50,35 @@ def data():
         }
     return jsonify(data)
 
-
 @app.route("/update_location", methods=["POST"])
 def update_location():
     data = request.json
     return jsonify({"message": "Localização atualizada com sucesso!"}), 200
 
-@app.route("/shutdown")
-def shutdown():
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func:
-        func()
-    return "Servidor encerrado"
+@app.route("/mark_point", methods=["POST"])
+def mark_point():
+    """Endpoint para marcar um ponto no mapa."""
+    data = request.json
+    lat = data.get("lat")
+    lon = data.get("lon")
+    
+    # Broadcast the marked point to all clients
+    asyncio.run(broadcast_marked_point(lat, lon))
+    
+    return jsonify({"message": "Ponto marcado com sucesso!"}), 200
+
+async def broadcast_marked_point(lat, lon):
+    """Envia a localização marcada para todos os clientes WebSocket."""
+    for ws_client_id, ws in websocket_clients.items():
+        try:
+            message = {
+                "type": "mark_point",
+                "lat": lat,
+                "lon": lon
+            }
+            await ws.send(json.dumps(message))
+        except Exception as e:
+            print(f"[ERRO] Falha ao enviar para {ws_client_id}: {e}")
 
 def handle_tcp_client(conn, addr):
     """Recebe dados do cliente via TCP e armazena a localização."""
@@ -92,7 +109,6 @@ def handle_tcp_client(conn, addr):
             clients_colors.pop(client_id, None)
         conn.close()
 
-        
 async def websocket_handler(websocket):
     global websocket_counter
     client_id = f"CLIENTE {websocket_counter}"
@@ -165,7 +181,6 @@ def ensure_ports_available():
     
     return True
 
-
 async def broadcast_location(sender_id, lat, lon):
     """Envia uma atualização de localização para todos os clientes WebSocket"""
     for ws_client_id, ws in websocket_clients.items():
@@ -180,8 +195,6 @@ async def broadcast_location(sender_id, lat, lon):
             await ws.send(json.dumps(message))
         except Exception as e:
             print(f"[ERRO] Falha ao enviar para {ws_client_id}: {e}")
-
-
 
 async def websocket_server():
     async with websockets.serve(websocket_handler, "0.0.0.0", WEBSOCKET_PORT):
@@ -214,4 +227,3 @@ if __name__ == "__main__":
     threading.Thread(target=start_websocket_server, daemon=True).start()
     threading.Thread(target=start_tcp_server, daemon=True).start()
     app.run(host="0.0.0.0", port=8000, debug=True)
-   

@@ -26,8 +26,38 @@ function createWindow() {
         }
     });
 
-    //win.loadURL('http://15.229.12.108:8000'); // Endereço do Flask
     win.loadURL('http://192.168.100.105:8000'); // Endereço do Flask
+
+    // Add event listeners for marking points and user clicks
+    win.webContents.on('did-finish-load', () => {
+        win.webContents.executeJavaScript(`
+            document.getElementById('markPointButton').addEventListener('click', () => {
+                const lat = prompt("Enter latitude:");
+                const lon = prompt("Enter longitude:");
+                if (lat && lon) {
+                    fetch('/mark_point', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ lat, lon })
+                    });
+                }
+            });
+
+            const userList = document.getElementById('userList');
+            userList.addEventListener('click', (event) => {
+                const userId = event.target.dataset.userId;
+                if (userId) {
+                    // Logic to zoom in on the user's location on the map
+                    const userLocation = getUserLocation(userId); // Implement this function to get the user's location
+                    if (userLocation) {
+                        map.setView(userLocation, 15); // Zoom level 15
+                    }
+                }
+            });
+        `);
+    });
 }
 
 app.whenReady().then(() => {

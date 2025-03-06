@@ -32,13 +32,9 @@
     </style>
   </head>
   <body>
-    <button onclick="updateLocations()">Atualizar Localização</button>
-    <button onclick="reconnect()">Reconectar</button>
-    <button onclick="exitApp()">Sair</button>
-    <button onclick="sendLocation()">Compartilhar Localização</button>
-
-    <h2>Mapa dos Usuários</h2>
     <div id="map"></div>
+    <h2>Mapa dos Usuários</h2>
+
     <div
       id="client-list-container"
       class="card position-absolute"
@@ -47,10 +43,14 @@
       <button onclick="updateClientList()" class="btn btn-primary">
         Atualizar Lista de Clientes
       </button>
+
       <ul id="client-list" class="list-group"></ul>
+      <button id="markPointButton" class="btn btn-success">Marcar Ponto</button>
     </div>
 
     <script>
+      let map; // Declare map variable in the correct scope
+
       function initMap() {
         map = L.map("map").setView([-14.235, -51.9253], 4);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -62,7 +62,6 @@
 
       function updateMarkers(data) {
         for (const [client, info] of Object.entries(data)) {
-          // Verifica se lat e lon são números válidos
           if (
             typeof info.lat !== "number" ||
             typeof info.lon !== "number" ||
@@ -73,7 +72,7 @@
               `Coordenadas inválidas recebidas para ${client}:`,
               info
             );
-            continue; // Ignora esse cliente e evita erro
+            continue;
           }
 
           if (markers[client]) {
@@ -98,7 +97,6 @@
         clientList.innerHTML = "";
         var cont = 0;
 
-        // Remover marcadores que não estão mais presentes nos dados
         for (const clientId in markers) {
           if (!data[clientId]) {
             markers[clientId].remove();
@@ -106,7 +104,6 @@
           }
         }
 
-        // Atualizar ou criar marcadores
         for (const [client, { lat, lon, color }] of Object.entries(data)) {
           if (markers[client]) {
             markers[client].setLatLng([lat, lon]);
@@ -150,6 +147,45 @@
           .catch((error) => console.error("Erro ao obter dados:", error));
       }
 
+      function mark_point_on_map(lat, lon) {
+        if (typeof lat === "number" && typeof lon === "number") {
+          L.marker([lat, lon])
+            .addTo(map)
+            .bindPopup(`Ponto marcado: ${lat}, ${lon}`)
+            .openPopup();
+        } else {
+          console.error("Coordenadas inválidas:", lat, lon);
+        }
+      }
+
+      window.onload = function () {
+        initMap();
+        fetchData();
+        document
+          .getElementById("markPointButton")
+          .addEventListener("click", () => {
+            map.once('click', function(e) {
+              const lat = e.latlng.lat;
+              const lon = e.latlng.lng;
+              mark_point_on_map(lat, lon);
+              fetch("/mark_point", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ lat, lon }),
+              });
+            });
+            map.getContainer().style.cursor = 'crosshair'; // Change cursor to crosshair
+          });
+
+        map.on('click', function() {
+          map.getContainer().style.cursor = ''; // Reset cursor back to default
+        });
+
+        startWebSocket();
+      };
+
       let socket;
 
       function startWebSocket() {
@@ -164,7 +200,6 @@
             let data = JSON.parse(event.data);
             console.log("[DADOS RECEBIDOS]", data);
             if (data.type === "location_update") {
-              // Atualiza apenas o marcador específico
               let clientData = {
                 [data.client_id]: {
                   lat: data.lat,
@@ -174,7 +209,6 @@
               };
               updateMarkers(clientData);
             } else {
-              // Atualiza todos os marcadores
               updateMap(data);
             }
           } catch (error) {
@@ -188,7 +222,6 @@
 
         socket.onclose = function (event) {
           console.log("Conexão WebSocket fechada.");
-          // Tenta reconectar após 5 segundos
           setTimeout(startWebSocket, 5000);
         };
       }
@@ -199,13 +232,6 @@
         }
         startWebSocket();
       }
-
-      window.onload = function () {
-        initMap();
-        fetchData();
-        //setInterval(fetchData, 5000);
-        startWebSocket();
-      };
     </script>
   </body>
 </html>
