@@ -46,11 +46,11 @@
       class="card position-absolute"
       style="top: 0; right: 0; width: 300px; height: 40px"
     >
-      <button onclick="updateClientList() updateMap()" class="btn btn-primary">
-        Atualizar Lista de mapas
+      <button onclick="updateClientList()" class="btn btn-primary">
+        Atualizar Lista de Clientes
       </button>
 
-      <button onclick="updateMap()" class="btn">
+      <button onclick="updateMap(currentData)" class="btn btn-primary">
         Atualizar Mapa
       </button>
 
@@ -62,18 +62,9 @@
 
     <script>
       let map;
-      let markers = {};
       let socket;
-
-    @app.after_request
-    def add_header(response):
-    response.cache_control.no_store = True
-    response.cache_control.max_age = 0
-    response.cache_control.must_revalidate = True
-    response.cache_control.no_cache = True
-    response.pragma = 'no-cache'
-    response.expires = 0
-    return response
+      let markers = {};
+      let currentData = {};
 
 
       function initMap() {
