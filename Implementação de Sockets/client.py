@@ -1,3 +1,4 @@
+import sys
 import time
 import json
 import socket
@@ -8,47 +9,42 @@ import threading
 import websockets
 
 # Configuração do servidor
-SERVER_HOST = '192.168.100.105'
+SERVER_HOST = '192.168.1.103'
 SERVER_PORT = 5000
-WEBSOCKET_SERVER = 'ws://localhost:6790'
+WEBSOCKET_SERVER = 'ws://192.168.1.103:6955'
 
 cached_location = None
 last_request_time = 0
+userName = "usuario desconhecido"
+if len(sys.argv) > 1:
+    userName = sys.argv[1]
+websocket_client = None  # Mantém uma única conexão WebSocket ativa
 
 def get_ip_based_location():
     global cached_location, last_request_time
-    current_time = time.time()
     try:
         response = requests.get("http://ip-api.com/json/")
         data = response.json()
         if data['status'] == 'success':
             cached_location = f"{data['lat']},{data['lon']}"
-            last_request_time = current_time
+            last_request_time = time.time()
             return cached_location
-        else:
-            return "0.0,0.0"
+        return "0.0,0.0"
     except Exception as e:
         print(f"[ERRO] Falha ao obter localização: {e}")
         return "0.0,0.0"
-    
+
 def get_real_gps_coordinates():
     global cached_location, last_request_time
-    current_time = time.time()   
     try:
         response = geocoder.ip('me')
         if response.ok:
-            lat = response.latlng[0] if response.latlng else None
-            lon = response.latlng[1] if response.latlng else None
-            
+            lat, lon = response.latlng if response.latlng else (None, None)
             if lat is not None and lon is not None:
                 cached_location = f"{lat},{lon}"
-                last_request_time = current_time
+                last_request_time = time.time()
                 return cached_location
-            else:
-                return "0.0,0.0"
-        else:
-            return "0.0,0.0"
-    
+        return "0.0,0.0"
     except Exception as e:
         print(f"[ERRO] Falha ao obter localização: {e}")
         return "0.0,0.0"
@@ -56,8 +52,11 @@ def get_real_gps_coordinates():
 def send_data_tcp(client):
     """Envia dados de localização via TCP"""
     while True:
-        gps_data = get_ip_based_location()  # Usa localização baseada no IP
+        gps_data = get_ip_based_location()
         try:
+            if client.fileno() == -1:
+                print("[ERRO] Conexão TCP fechada.")
+                break
             client.send(gps_data.encode('utf-8'))
             print(f"[ENVIADO TCP] {gps_data}")
         except Exception as e:
@@ -66,76 +65,81 @@ def send_data_tcp(client):
         time.sleep(15)
 
 async def send_data_websocket():
-    """ Envia dados via WebSocket e recebe dados de outros clientes """
-    while True:
-        try:
-            async with websockets.connect(WEBSOCKET_SERVER) as websocket:
-                print("[WEBSOCKET] Conectado ao servidor")
-                
-                # Criar uma task para enviar dados
-                send_task = asyncio.create_task(send_location_updates(websocket))
-                
-                # Receber dados de outros clientes
-                try:
-                    while True:
-                        data = await websocket.recv()
-                        message = json.loads(data)
-                        if message["type"] == "location_update":
-                            client_id = message["client_id"]
-                            lat = message["lat"]
-                            lon = message["lon"]
-                            print(f"[{client_id}]: {lat},{lon}")
-                        elif message["type"] == "mark_point":
-                            # Logic to mark point on the map
-                            mark_point_on_map(message["lat"], message["lon"])
-                except Exception as e:
-                    print(f"[ERRO] Falha ao receber dados: {e}")
-                    send_task.cancel()
-                    
-        except Exception as e:
-            print(f"[ERRO] WebSocket desconectado: {e}")
-            await asyncio.sleep(5)  # Aguarda antes de tentar reconectar
+    """Envia e recebe dados via WebSocket"""
+    global websocket_client
+
+    if websocket_client is not None:
+        print("[INFO] WebSocket já está ativo. Ignorando nova conexão.")
+        return
+
+    try:
+        async with websockets.connect(WEBSOCKET_SERVER) as websocket:
+            websocket_client = websocket  # Armazena a conexão ativa
+            await websocket.send(json.dumps({"type": "register", "username": userName}))
+            print("[WEBSOCKET] Conectado ao servidor")
+
+            send_task = asyncio.create_task(send_location_updates(websocket))
+
+            try:
+                while True:
+                    data = await websocket.recv()
+                    message = json.loads(data)
+                    if message["type"] == "location_update":
+                        client_id = message["client_id"]
+                        lat, lon = message["lat"], message["lon"]
+                        print(f"[{client_id}]: {lat},{lon}")
+                    elif message["type"] == "mark_point":
+                        mark_point_on_map(message["lat"], message["lon"])
+            except Exception as e:
+                print(f"[ERRO] Falha ao receber dados: {e}")
+                send_task.cancel()
+    except Exception as e:
+        print(f"[ERRO] WebSocket desconectado: {e}")
+    finally:
+        websocket_client = None  # Reseta a conexão ao desconectar
 
 async def send_location_updates(websocket):
-    """ Envia atualizações de localização periodicamente """
+    """Envia atualizações de localização periodicamente"""
     try:
         while True:
             gps_data_ws = get_real_gps_coordinates()
             await websocket.send(gps_data_ws)
             print(f"[ENVIADO WS] {gps_data_ws}")
-            await asyncio.sleep(15)  # Envia a cada 15 segundos
+            await asyncio.sleep(15)
     except asyncio.CancelledError:
-        pass
-
-def mark_point_on_map(lat, lon):
-    """ Logic to mark a point on the map with a different ping format """
-    # This function will be called when a point is marked
-    print(f"[MARCAR PONTO] Latitude: {lat}, Longitude: {lon}")
+        print("[INFO] Tarefa de envio de localização cancelada.")
 
 def start_websocket_thread():
-    """ Inicia o WebSocket em uma thread separada """
+    """Garante que apenas um WebSocket seja iniciado"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    loop.run_until_complete(send_data_websocket())
 
 def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         client.connect((SERVER_HOST, SERVER_PORT))
         print(f"[CONECTADO] Cliente conectado ao servidor {SERVER_HOST}:{SERVER_PORT}")
-        
+
         thread_send_tcp = threading.Thread(target=send_data_tcp, args=(client,))
         thread_send_tcp.start()
-        
-        thread_ws = threading.Thread(target=start_websocket_thread, daemon=True)
-        thread_ws.start()
-        
-        asyncio.run(send_data_websocket())
-        
+
+        # Executa WebSocket apenas se não estiver ativo
+        if websocket_client is None:
+            thread_ws = threading.Thread(target=start_websocket_thread, daemon=True)
+            thread_ws.start()
+        else:
+            print("[INFO] WebSocket já rodando. Ignorando nova inicialização.")
+
         thread_send_tcp.join()
     except Exception as e:
         print(f"[ERRO] Não foi possível conectar ao servidor: {e}")
     finally:
         client.close()
+
+def mark_point_on_map(lat, lon):
+    """Marca um ponto no mapa"""
+    print(f"[MARCAR PONTO] Latitude: {lat}, Longitude: {lon}")
 
 if __name__ == "__main__":
     start_client()

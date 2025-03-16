@@ -1,3 +1,4 @@
+@ -1,237 +1,248 @@
 <!DOCTYPE html>
 <html lang="pt">
   <head>
@@ -32,6 +33,11 @@
     </style>
   </head>
   <body>
+    <div id="login-container">
+      <input type="text" id="username" placeholder="Digite seu nome" />
+      <button onclick="saveUsername()">Entrar</button>
+    </div>
+
     <div id="map"></div>
     <h2>Mapa dos Usuários</h2>
 
@@ -40,18 +46,35 @@
       class="card position-absolute"
       style="top: 0; right: 0; width: 300px; height: 40px"
     >
-      <button onclick="updateClientList()" class="btn btn-primary">
-        Atualizar Lista de Clientes
+      <button onclick="updateClientList() updateMap()" class="btn btn-primary">
+        Atualizar Lista de mapas
+      </button>
+
+      <button onclick="updateMap()" class="btn">
+        Atualizar Mapa
       </button>
 
       <ul id="client-list" class="list-group" onclick="zoomToClient()"></ul>
       <button id="markPointButton" class="btn btn-success">Marcar Ponto</button>
+      <button onclick="disconnectUser()" class="btn btn-danger">Desconectar</button>
+
     </div>
 
     <script>
       let map;
       let markers = {};
       let socket;
+
+    @app.after_request
+    def add_header(response):
+    response.cache_control.no_store = True
+    response.cache_control.max_age = 0
+    response.cache_control.must_revalidate = True
+    response.cache_control.no_cache = True
+    response.pragma = 'no-cache'
+    response.expires = 0
+    return response
+
 
       function initMap() {
         map = L.map("map").setView([-14.235, -51.9253], 4);
@@ -110,38 +133,17 @@
       }
 
       function updateMap(data) {
-        const clientList = document.getElementById("client-list");
-        clientList.innerHTML = "";
-        let cont = 0;
-
-        for (const clientId in markers) {
-          if (!data[clientId]) {
-            markers[clientId].remove();
-            delete markers[clientId];
-          }
-        }
-
-        for (const [client, { lat, lon, color }] of Object.entries(data)) {
-          if (markers[client]) {
-            markers[client].setLatLng([lat, lon]);
-          } else {
-            markers[client] = L.circleMarker([lat, lon], {
-              color: color,
-              radius: 8,
-              fillColor: color,
-              fillOpacity: 0.8,
-            })
-              .addTo(map)
-              .bindPopup(`Usuário: ${client}`);
-          }
-          let listItem = document.createElement("li");
-          listItem.className = "list-group-item";
-          listItem.textContent = `Cliente ${cont} ${client}`;
-          listItem.onclick = () => zoomToClient(client); // Correção: Passa client correto
-          clientList.appendChild(listItem);
-          cont += 1;
-        }
+        Object.keys(data).forEach(client => {
+          const info = data[client];
+          L.circleMarker([info.lat, info.lon], {
+            color: info.color,
+            radius: 8,
+            fillColor: info.color,
+            fillOpacity: 0.8,
+          }).addTo(map).bindPopup(`Usuário: ${client}`);
+        });
       }
+      
 
       function updateClientList() {
         let clientList = document.getElementById("client-list");
@@ -159,7 +161,11 @@
       function fetchData() {
         fetch("/data")
           .then((response) => response.json())
-          .then((data) => updateMap(data))
+          .then((data) => {
+            // Mescla os clientes TCP e WebSocket em um único objeto
+            const merged = { ...data.tcp, ...data.websocket };
+            updateMap(merged);
+          })
           .catch((error) => console.error("Erro ao obter dados:", error));
       }
 
@@ -175,13 +181,19 @@
       }
 
       function startWebSocket() {
+        const username = localStorage.getItem("username");
+        if (!username) {
+            document.getElementById("login-container").style.display = "block";
+            return;
+        }
+
         let socket = new WebSocket("ws://localhost:6790");
 
-        socket.onopen = () => console.log("Conexão WebSocket estabelecida.");
+        socket.onopen = () => console.log(`Conectado como ${username}`);
 
         socket.onmessage = (event) => {
           try {
-            let data = JSON.parse(event.data);
+            const data = JSON.parse(event.data);
             console.log("[DADOS RECEBIDOS]", data);
             if (data.type === "location_update") {
               let clientData = {
@@ -215,6 +227,11 @@
         startWebSocket();
       }
 
+      function disconnectUser() {
+        localStorage.removeItem("username");
+        location.reload(); // Recarregar para forçar novo login
+    }
+
       window.onload = function () {
         initMap();
         fetchData();
@@ -242,7 +259,6 @@
 
         startWebSocket();
       };
-      
     </script>
   </body>
 </html>
