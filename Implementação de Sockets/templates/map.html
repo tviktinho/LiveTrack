@@ -126,39 +126,52 @@
       function updateMap(data) {
         Object.keys(data).forEach(client => {
           const info = data[client];
-          L.circleMarker([info.lat, info.lon], {
-            color: info.color,
-            radius: 8,
-            fillColor: info.color,
-            fillOpacity: 0.8,
-          }).addTo(map).bindPopup(`Usuário: ${client}`);
+          // Se o marcador ainda não existir, cria e armazena em markers
+          if (!markers[client]) {
+            markers[client] = L.circleMarker([info.lat, info.lon], {
+              color: info.color,
+              radius: 8,
+              fillColor: info.color,
+              fillOpacity: 0.8,
+            }).addTo(map).bindPopup(`Usuário: ${client}`);
+          } else {
+            // Se já existe, atualize a posição
+            markers[client].setLatLng([info.lat, info.lon]);
+          }
         });
+        location.reload();
       }
       
 
       function updateClientList() {
         let clientList = document.getElementById("client-list");
-        var cont = 0;
         clientList.innerHTML = "";
-        for (const client in markers) {
+        for (const client in currentData) {
           let li = document.createElement("li");
           li.className = "list-group-item";
-          li.textContent = `Cliente  ${cont} ${client}`;
-          cont += 1;
+          const clientName = currentData[client].name || client; // Pega o nome correto
+          li.textContent = clientName;
+          li.style.cursor = "pointer";
+          li.onclick = () => zoomToClient(client);
           clientList.appendChild(li);
         }
       }
+      
+      
 
       function fetchData() {
         fetch("/data")
           .then((response) => response.json())
           .then((data) => {
             // Mescla os clientes TCP e WebSocket em um único objeto
-            const merged = { ...data.tcp, ...data.websocket };
-            updateMap(merged);
+            currentData = { ...data.tcp, ...data.websocket };
+            updateMarkers(currentData);
+            // (Opcional) Atualiza a lista logo após carregar os dados
+            updateClientList();
           })
           .catch((error) => console.error("Erro ao obter dados:", error));
       }
+      
 
       function mark_point_on_map(lat, lon) {
         if (typeof lat === "number" && typeof lon === "number") {

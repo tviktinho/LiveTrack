@@ -1,6 +1,7 @@
 import sys
 import time
 import json
+import ipinfo
 import socket
 import asyncio
 import geocoder
@@ -8,10 +9,17 @@ import requests
 import threading
 import websockets
 
+
+
+#ipinfo.io/[IP address]?token=058ff7f8b2eac9
+
 # Configuração do servidor
 SERVER_HOST = '192.168.1.103'
 SERVER_PORT = 5000
 WEBSOCKET_SERVER = 'ws://192.168.1.103:6955'
+
+access_token = '058ff7f8b2eac9'
+
 
 cached_location = None
 last_request_time = 0
@@ -20,6 +28,7 @@ if len(sys.argv) > 1:
     userName = sys.argv[1]
 websocket_client = None  # Mantém uma única conexão WebSocket ativa
 
+#TCP
 def get_ip_based_location():
     global cached_location, last_request_time
     try:
@@ -34,10 +43,11 @@ def get_ip_based_location():
         print(f"[ERRO] Falha ao obter localização: {e}")
         return "0.0,0.0"
 
+#WEB SOCKET
 def get_real_gps_coordinates():
     global cached_location, last_request_time
     try:
-        response = geocoder.ip('me')
+        response = geocoder.ip('me')        
         if response.ok:
             lat, lon = response.latlng if response.latlng else (None, None)
             if lat is not None and lon is not None:
@@ -47,7 +57,7 @@ def get_real_gps_coordinates():
         return "0.0,0.0"
     except Exception as e:
         print(f"[ERRO] Falha ao obter localização: {e}")
-        return "0.0,0.0"
+        return "0.0..0.0"
 
 def send_data_tcp(client):
     """Envia dados de localização via TCP"""
@@ -57,12 +67,15 @@ def send_data_tcp(client):
             if client.fileno() == -1:
                 print("[ERRO] Conexão TCP fechada.")
                 break
-            client.send(gps_data.encode('utf-8'))
-            print(f"[ENVIADO TCP] {gps_data}")
+            # Enviar nome do usuário junto com a localização
+            message = f"{userName},{gps_data}"
+            client.send(message.encode('utf-8'))
+            print(f"[ENVIADO TCP] {message}")
         except Exception as e:
             print(f"[ERRO] Falha ao enviar dados TCP: {e}")
             break
         time.sleep(15)
+
 
 async def send_data_websocket():
     """Envia e recebe dados via WebSocket"""

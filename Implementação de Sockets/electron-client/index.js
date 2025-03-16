@@ -6,6 +6,7 @@ let flaskProcess;
 let clientProcess;
 let userName = '';
 
+// Função para iniciar o servidor Flask usando um script batch
 function startFlask() {
     console.log("[DEBUG] Iniciando Flask...");
     const env = Object.assign({}, process.env, { 'PYTHONIOENCODING': 'utf-8' });
@@ -20,6 +21,7 @@ function startFlask() {
     });
 }
 
+// Função para iniciar o script cliente Python com o nome do usuário como argumento
 function startClient(userName) {
     console.log(`[DEBUG] Iniciando client.py com nome: ${userName}`);
     const clientScript = path.resolve(__dirname, '..', 'client.py');
@@ -34,6 +36,7 @@ function startClient(userName) {
     });
 }
 
+// Função para solicitar o nome do usuário através de uma janela
 function askUserName() {
     return new Promise((resolve) => {
         console.log("[DEBUG] Abrindo janela para inserir nome...");
@@ -82,6 +85,7 @@ function askUserName() {
     });
 }
 
+// Função assíncrona para criar a janela principal após o usuário ser identificado
 async function createWindow() {
     console.log("[DEBUG] Criando janela principal...");
     userName = await askUserName();
@@ -100,12 +104,14 @@ async function createWindow() {
     win.loadURL('http://192.168.1.103:8000');
 }
 
+// Inicializa a aplicação Electron
 app.whenReady().then(() => {
     console.log("[DEBUG] Aplicacao Electron iniciada.");
     startFlask();
     setTimeout(createWindow, 1000);
 });
 
+// Manipula o fechamento de todas as janelas
 app.on('window-all-closed', () => {
     console.log("[DEBUG] Fechando aplicacao...");
     if (process.platform !== 'darwin') {
@@ -121,6 +127,7 @@ app.on('window-all-closed', () => {
     }
 });
 
+// Recria a janela se o aplicativo for reativado (especificamente para macOS)
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
