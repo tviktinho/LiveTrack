@@ -34,6 +34,13 @@ COLOR_LIST = [
 app = Flask(__name__)
 CORS(app)
 
+#Desabilitar o cache no Flask
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
 
 # Rota principal que carrega o mapa HTML
 @app.route('/')
@@ -54,7 +61,6 @@ def data():
         }
     return jsonify(data)
 
-
 # Rota para atualizar a localização de um cliente via POST
 @app.route("/update_location", methods=["POST"])
 def update_location():
@@ -70,14 +76,6 @@ def mark_point():
     lon = data.get("lon")
     asyncio.run(broadcast_marked_point(lat, lon))
     return jsonify({"message": "Ponto marcado com sucesso!"}), 200
-
-#Desabilitar o cache no Flask
-@app.after_request
-def add_header(response):
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '-1'
-    return response
 
 # Função assíncrona para notificar todos os clientes WebSocket sobre um novo ponto marcado
 async def broadcast_marked_point(lat, lon):

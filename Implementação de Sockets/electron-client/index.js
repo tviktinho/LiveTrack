@@ -101,7 +101,7 @@ async function createWindow() {
     });
 
     console.log("[DEBUG] Carregando pagina Flask...");
-    win.loadURL('http://192.168.1.103:8000');
+    win.loadURL('http://3.145.211.37:8000');
 }
 
 // Inicializa a aplicação Electron

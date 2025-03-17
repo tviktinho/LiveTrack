@@ -14,16 +14,16 @@ import websockets
 #ipinfo.io/[IP address]?token=058ff7f8b2eac9
 
 # Configuração do servidor
-SERVER_HOST = '192.168.1.103'
+SERVER_HOST = '3.145.211.37'
 SERVER_PORT = 5000
-WEBSOCKET_SERVER = 'ws://192.168.1.103:6955'
+WEBSOCKET_SERVER = 'ws://3.145.211.37:6955'
 
 access_token = '058ff7f8b2eac9'
 
 
 cached_location = None
 last_request_time = 0
-userName = "usuario desconhecido"
+userName = "usuario-desconhecido"
 if len(sys.argv) > 1:
     userName = sys.argv[1]
 websocket_client = None  # Mantém uma única conexão WebSocket ativa
@@ -75,7 +75,6 @@ def send_data_tcp(client):
             print(f"[ERRO] Falha ao enviar dados TCP: {e}")
             break
         time.sleep(15)
-
 
 async def send_data_websocket():
     """Envia e recebe dados via WebSocket"""
