@@ -1,31 +1,33 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
+const { connect } = require('nats');
 
-let flaskProcess;
 let clientProcess;
 let userName = '';
 
-// Função para iniciar o servidor Flask usando um script batch
-function startFlask() {
-    console.log("[DEBUG] Iniciando Flask...");
-    const env = Object.assign({}, process.env, { 'PYTHONIOENCODING': 'utf-8' });
-    let startScript = path.resolve(__dirname, '..', 'start_server.bat');
-    flaskProcess = exec(`"${startScript}"`, { env, cwd: path.resolve(__dirname, '..') }, (error, stdout, stderr) => {
-        if (error) {
-            console.error("[ERRO] Falha ao iniciar o Flask:", error.message);
-            return;
-        }
-        console.log("[FLASK] Saída:", stdout);
-        console.error("[FLASK] Erros:", stderr);
-    });
+async function setupNats() {
+    try {
+        const nc = await connect({ servers: "nats://localhost:4222" });
+
+        console.log("[NATS] Conectado ao servidor NATS.");
+
+        const sub = nc.subscribe("locations");
+        (async () => {
+            for await (const msg of sub) {
+                const data = JSON.parse(msg.data);
+                console.log(`[NATS] ${data.username}: ${data.lat}, ${data.lon}`);
+            }
+        })();
+    } catch (error) {
+        console.error("[ERRO] Falha ao conectar ao NATS:", error);
+    }
 }
 
-// Função para iniciar o script cliente Python com o nome do usuário como argumento
 function startClient(userName) {
     console.log(`[DEBUG] Iniciando client.py com nome: ${userName}`);
     const clientScript = path.resolve(__dirname, '..', 'client.py');
-    
+
     clientProcess = exec(`python "${clientScript}" "${userName}"`, (error, stdout, stderr) => {
         if (error) {
             console.error("[ERRO] Falha ao iniciar o cliente:", error.message);
@@ -36,11 +38,10 @@ function startClient(userName) {
     });
 }
 
-// Função para solicitar o nome do usuário através de uma janela
 function askUserName() {
     return new Promise((resolve) => {
         console.log("[DEBUG] Abrindo janela para inserir nome...");
-        
+
         const inputWindow = new BrowserWindow({
             width: 400,
             height: 200,
@@ -49,14 +50,13 @@ function askUserName() {
             alwaysOnTop: true,
             webPreferences: {
                 nodeIntegration: true,
-                contextIsolation: false // Permite o uso do ipcRenderer diretamente
+                contextIsolation: false
             }
         });
 
-        // Registrar o evento antes da criação da janela
         ipcMain.once('set-user-name', (_, name) => {
             console.log(`[DEBUG] Nome recebido: ${name}`);
-            userName = name.trim() || "Usuário"; // Nome padrão se vazio
+            userName = name.trim() || "Usuário";
             inputWindow.close();
             resolve(userName);
         });
@@ -71,9 +71,8 @@ function askUserName() {
                 <script>
                     const { ipcRenderer } = require('electron');
                     document.getElementById('nameForm').addEventListener('submit', (event) => {
-                        event.preventDefault(); // Impede o recarregamento da janela
+                        event.preventDefault();
                         const name = document.getElementById('userName').value.trim();
-                        console.log("[DEBUG] Nome digitado:", name);
                         if (name) {
                             ipcRenderer.send('set-user-name', name);
                         } else {
@@ -81,15 +80,13 @@ function askUserName() {
                         }
                     });
                 </script>
-            </body>`);        
+            </body>`);
     });
 }
 
-// Função assíncrona para criar a janela principal após o usuário ser identificado
 async function createWindow() {
-    console.log("[DEBUG] Criando janela principal...");
+    await setupNats();
     userName = await askUserName();
-    console.log(`[DEBUG] Nome definido: ${userName}`);
     startClient(userName);
 
     let win = new BrowserWindow({
@@ -100,25 +97,14 @@ async function createWindow() {
         }
     });
 
-    console.log("[DEBUG] Carregando pagina Flask...");
-    win.loadURL('http://3.145.211.37:8000');
+    win.loadURL('http://192.168.1.100:8000');
 }
 
-// Inicializa a aplicação Electron
-app.whenReady().then(() => {
-    console.log("[DEBUG] Aplicacao Electron iniciada.");
-    startFlask();
-    setTimeout(createWindow, 1000);
-});
+app.whenReady().then(createWindow);
 
-// Manipula o fechamento de todas as janelas
 app.on('window-all-closed', () => {
-    console.log("[DEBUG] Fechando aplicacao...");
+    console.log("[DEBUG] Fechando aplicação...");
     if (process.platform !== 'darwin') {
-        if (flaskProcess) {
-            console.log("[DEBUG] Finalizando Flask...");
-            flaskProcess.kill();
-        }
         if (clientProcess) {
             console.log("[DEBUG] Finalizando cliente...");
             clientProcess.kill();
@@ -127,7 +113,6 @@ app.on('window-all-closed', () => {
     }
 });
 
-// Recria a janela se o aplicativo for reativado (especificamente para macOS)
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
