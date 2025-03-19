@@ -10,7 +10,6 @@ import threading
 import websockets
 
 
-
 #ipinfo.io/[IP address]?token=058ff7f8b2eac9
 
 # Configuração do servidor
