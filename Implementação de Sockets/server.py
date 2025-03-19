@@ -128,7 +128,7 @@ async def main():
     threading.Thread(target=start_tcp_server, daemon=True).start()
     threading.Thread(target=lambda: asyncio.run(websocket_server()), daemon=True).start()
 
-    print("[Flask] Servidor iniciado em http://0.0.0.0:8000")
+    print(f"[Flask] Servidor iniciado em {HOST}:8000")
     app.run(host="0.0.0.0", port=8000, debug=False)
 
 if __name__ == "__main__":
