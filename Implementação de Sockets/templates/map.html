@@ -1,22 +1,26 @@
-@ -1,237 +1,248 @@
 <!DOCTYPE html>
 <html lang="pt">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Usuários</title>
+
+    <!-- Estilos -->
     <link
       rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <link
       rel="stylesheet"
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
     />
+
     <link rel="manifest" href="/manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nats.ws@1.9.0/nats.js"></script>
+
     <style>
       #map {
         position: absolute;
@@ -32,6 +36,7 @@
       }
     </style>
   </head>
+
   <body>
     <div id="login-container">
       <input type="text" id="username" placeholder="Digite seu nome" />
@@ -54,215 +59,130 @@
         Atualizar Mapa
       </button>
 
-      <ul id="client-list" class="list-group" onclick="zoomToClient()"></ul>
-      <button id="markPointButton" class="btn btn-success">Marcar Ponto</button>
-      <button onclick="disconnectUser()" class="btn btn-danger">Desconectar</button>
+      <ul id="client-list" class="list-group"></ul>
 
+      <button id="markPointButton" class="btn btn-success">Marcar Ponto</button>
+
+      <button onclick="disconnectUser()" class="btn btn-danger">
+        Desconectar
+      </button>
     </div>
 
-    <script>
-      let map;
-      let socket;
+    <script type="module">
+      import { connect } from "https://cdn.skypack.dev/nats.ws@1.9.0";
+
+      let map = L.map("map").setView([-14.235, -51.9253], 4);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(map);
+
       let markers = {};
       let currentData = {};
+      let nc = undefined; // NATS connection
 
-
-      function initMap() {
-        map = L.map("map").setView([-14.235, -51.9253], 4);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "&copy; OpenStreetMap contributors",
-        }).addTo(map);
-      }
-
-      function updateMarkers(data) {
-        for (const [client, info] of Object.entries(data)) {
-          if (
-            typeof info.lat !== "number" ||
-            typeof info.lon !== "number" ||
-            isNaN(info.lat) ||
-            isNaN(info.lon)
-          ) {
-            console.warn(
-              `Coordenadas inválidas recebidas para ${client}:`,
-              info
-            );
-            continue;
+      async function connectNATS() {
+        try {
+          if (!nc) {
+            nc = await connect({ servers: "ws://localhost:9222" });
+            console.log("[NATS] Conectado com sucesso!");
+      
+            const sub = nc.subscribe("locations");
+            (async () => {
+              for await (const msg of sub) {
+                console.log("[NATS] Mensagem recebida bruta:", msg.data);
+      
+                // Verifica se a mensagem é uma string
+                const decoded = new TextDecoder().decode(msg.data);
+                console.log("[NATS] Decodificado:", decoded);
+      
+                const data = JSON.parse(decoded); // Agora parseia
+                console.log("[NATS] Parseado JSON:", data);
+      
+                currentData[data.username] = { lat: data.lat, lon: data.lon };
+                updateMarker(data.username, data.lat, data.lon);
+                updateClientList();
+              }
+            })();
           }
-
-          if (markers[client]) {
-            markers[client].setLatLng([info.lat, info.lon]);
-          } else {
-            markers[client] = L.circleMarker([info.lat, info.lon], {
-              color: info.color || "blue",
-              radius: 8,
-              fillColor: info.color || "blue",
-              fillOpacity: 0.8,
-            })
-              .addTo(map)
-              .bindPopup(`Usuário: ${client}`);
-          }
+        } catch (error) {
+          console.error("[NATS] Erro ao conectar:", error);
+          nc = undefined;
         }
-
-        console.log("[DEBUG] Atualização de marcador para:", Object.keys(data));
-      }
-
-      function zoomToClient(clientId) {
-        console.log("Buscando cliente:", clientId);
-        console.log("Clientes disponíveis:", Object.keys(markers));
-
-        const clientMarker = markers[clientId];
-        if (clientMarker) {
-          const latLng = clientMarker.getLatLng();
-          if (!latLng) {
-            console.error("Não foi possível obter coordenadas para", clientId);
-            return;
-          }
-          map.setView([latLng.lat, latLng.lng], 10);
-        } else {
-          console.error("Cliente não encontrado:", clientId);
-        }
-      }
-
-      function updateMap(data) {
-        Object.keys(data).forEach(client => {
-          const info = data[client];
-          // Se o marcador ainda não existir, cria e armazena em markers
-          if (!markers[client]) {
-            markers[client] = L.circleMarker([info.lat, info.lon], {
-              color: info.color,
-              radius: 8,
-              fillColor: info.color,
-              fillOpacity: 0.8,
-            }).addTo(map).bindPopup(`Usuário: ${client}`);
-          } else {
-            // Se já existe, atualize a posição
-            markers[client].setLatLng([info.lat, info.lon]);
-          }
-        });
-        location.reload();
       }
       
+
+      function updateMarker(username, lat, lon) {
+        if (!markers[username]) {
+          markers[username] = L.marker([lat, lon])
+            .addTo(map)
+            .bindPopup(`Usuário: ${username}`);
+        } else {
+          markers[username]
+            .setLatLng([lat, lon])
+            .bindPopup(`Usuário: ${username}`);
+        }
+      }
 
       function updateClientList() {
         let clientList = document.getElementById("client-list");
         clientList.innerHTML = "";
-        for (const client in currentData) {
+        Object.keys(markers).forEach((client) => {
           let li = document.createElement("li");
           li.className = "list-group-item";
-          const clientName = currentData[client].name || client; // Pega o nome correto
-          li.textContent = clientName;
-          li.style.cursor = "pointer";
+          li.textContent = client;
           li.onclick = () => zoomToClient(client);
           clientList.appendChild(li);
-        }
+        });
       }
-      
-      
 
-      function fetchData() {
-        fetch("/data")
-          .then((response) => response.json())
-          .then((data) => {
-            // Mescla os clientes TCP e WebSocket em um único objeto
-            currentData = { ...data.tcp, ...data.websocket };
-            updateMarkers(currentData);
-            // (Opcional) Atualiza a lista logo após carregar os dados
-            updateClientList();
-          })
-          .catch((error) => console.error("Erro ao obter dados:", error));
-      }
-      
-
-      function mark_point_on_map(lat, lon) {
-        if (typeof lat === "number" && typeof lon === "number") {
-          L.marker([lat, lon])
-            .addTo(map)
-            .bindPopup(`Ponto marcado: ${lat}, ${lon}`)
-            .openPopup();
-        } else {
-          console.error("Coordenadas inválidas:", lat, lon);
+      function zoomToClient(clientId) {
+        if (markers[clientId]) {
+          map.setView(markers[clientId].getLatLng(), 10);
         }
       }
 
-      function startWebSocket() {
-        const username = localStorage.getItem("username");
-        if (!username) {
-            document.getElementById("login-container").style.display = "block";
-            return;
-        }
-
-        let socket = new WebSocket("ws://3.145.211.37:6955");
-
-        socket.onopen = () => console.log(`Conectado como ${username}`);
-
-        socket.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log("[DADOS RECEBIDOS]", data);
-            if (data.type === "location_update") {
-              let clientData = {
-                [data.client_id]: {
-                  lat: data.lat,
-                  lon: data.lon,
-                  color: data.color || "blue",
-                },
-              };
-              updateMap(clientData);
-            } else {
-              updateMap(data);
-            }
-          } catch (error) {
-            console.error("Erro ao processar mensagem WebSocket:", error);
+      function updateMap(data) {
+        console.log("[DEBUG] Dados recebidos para update:", data);
+        for (const [client, info] of Object.entries(data)) {
+          if (!markers[client]) {
+            markers[client] = L.marker([info.lat, info.lon])
+              .addTo(map)
+              .bindPopup(`Usuário: ${client}`);
+          } else {
+            markers[client].setLatLng([info.lat, info.lon]);
           }
-        };
-
-        socket.onerror = (error) => console.error("WebSocket error:", error);
-
-        socket.onclose = () => {
-          console.log("Conexão WebSocket fechada. Tentando reconectar...");
-          setTimeout(startWebSocket, 5000);
-        };
-      }
-
-      function reconnect() {
-        if (socket) {
-          socket.close();
         }
-        startWebSocket();
       }
 
       function disconnectUser() {
-        localStorage.removeItem("username");
-        location.reload(); // Recarregar para forçar novo login
-    }
+        if (nc) {
+          nc.close();
+          console.log("[NATS] Desconectado manualmente.");
+          alert("Você se desconectou do servidor.");
+        }
+      }
 
-      window.onload = function () {
-        initMap();
-        fetchData();
-        document
-          .getElementById("markPointButton")
-          .addEventListener("click", () => {
-            map.once("click", function (e) {
-              const lat = e.latlng.lat;
-              const lon = e.latlng.lng;
-              mark_point_on_map(lat, lon);
-              fetch("/mark_point", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ lat, lon }),
-              });
-            });
-            map.getContainer().style.cursor = "crosshair"; // Change cursor to crosshair
-          });
+      function saveUsername() {
+        const input = document.getElementById("username");
+        if (input && input.value.trim() !== "") {
+          const name = input.value.trim();
+          localStorage.setItem("username", name);
+          document.getElementById("login-container").style.display = "none";
+          console.log(`[LOGIN] Usuário setado: ${name}`);
+        } else {
+          alert("Por favor, insira um nome.");
+        }
+      }
 
-        map.on("click", function () {
-          map.getContainer().style.cursor = ""; // Reset cursor back to default
-        });
+      // Expor funções globais
+      window.updateClientList = updateClientList;
+      window.zoomToClient = zoomToClient;
+      window.updateMap = updateMap;
+      window.disconnectUser = disconnectUser;
+      window.saveUsername = saveUsername;
 
-        startWebSocket();
-      };
+      // Iniciar conexão NATS ao carregar a página
+      window.onload = connectNATS;
     </script>
   </body>
 </html>

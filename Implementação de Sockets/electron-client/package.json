@@ -4,12 +4,13 @@
   "main": "index.js",
   "scripts": {
     "start": "electron ."
-},
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "electron": "^34.3.0"
+    "electron": "^34.3.0",
+    "nats": "^2.29.3"
   }
 }
