@@ -1,81 +1,109 @@
-# **LiveTrack - Sistema de Compartilhamento de Localização em Tempo Real**
 
-## **Visão Geral**
-O **LiveTrack** é um sistema distribuído projetado para permitir que um grupo de amigos compartilhe sua localização em tempo real via GPS e visualize as posições no mapa.
+# 🚀 LiveTrack - Compartilhamento de Localização em Tempo Real
 
-A aplicação consiste em um **servidor Flask**, um **cliente Electron** e utiliza **WebSockets e REST API** para comunicação entre as máquinas.
+![GitHub Repo Size](https://img.shields.io/github/repo-size/seu-usuario/LiveTrack)
+![GitHub License](https://img.shields.io/github/license/seu-usuario/LiveTrack)
+![Made with Python](https://img.shields.io/badge/Made%20with-Python-blue)
+![Made with Electron](https://img.shields.io/badge/Made%20with-Electron-lightblue)
 
-## **Funcionalidades**
-✅ **Captura de Localização**: Usuários compartilham sua localização periodicamente. 
+---
 
-✅ **Exibição em Tempo Real**: Mapa interativo mostra as localizações dos amigos. 
+## 📋 Visão Geral
 
-✅ **Conexão via WebSockets e HTTP**: Suporte para comunicação em tempo real. 
+**LiveTrack** é um sistema distribuído para compartilhamento de localização em tempo real, usando **NATS Server**, **Python**, **Electron** e **Leaflet.js**.
 
-✅ **Grupos Privados**: Usuários podem compartilhar localização apenas com amigos. 
+### 🎯 Objetivo
+Permitir que amigos visualizem a posição uns dos outros através de um **mapa interativo**, com atualizações automáticas.
 
-✅ **Suporte para Várias Máquinas**: Cliente pode rodar em qualquer dispositivo na rede. 
+---
 
+## 🖼️ Exemplo Visual
 
-## **Tecnologias Utilizadas**
-- **Backend:** Flask (Python)
-- **Frontend:** Electron (JavaScript)
-- **Mapa:** OpenLayers ou Leaflet.js
-- **Comunicação em Tempo Real:** WebSockets (Socket.io) e HTTP
-- **Banco de Dados (futuro):** Firebase ou Redis
+### Interface do Sistema:
 
-## **Instalação e Execução**
+![Screenshot Mapa](./docs/mapa-exemplo.png)
 
-### **1. Clonar o repositório**
-```sh
+*Visualização de usuários em tempo real no mapa usando Leaflet.js.*
+
+---
+
+## ⚙️ Tecnologias Utilizadas
+
+- **Backend:** Flask + NATS (Python)
+- **Frontend:** Electron + Leaflet.js
+- **Comunicação:** NATS (TCP e WebSocket)
+
+---
+
+## 🛠️ Instalação
+
+### Pré-requisitos
+
+- Python 3.x
+- Node.js + npm
+- NATS Server
+
+### Passos
+
+1. Clonar o projeto:
+```bash
 git clone https://github.com/seu-usuario/LiveTrack.git
 cd LiveTrack
 ```
 
-### **2. Configurar o Servidor Flask**
-#### **Instalar dependências**
-```sh
-cd flask-server
-pip install -r requirements.txt
-```
-
-#### **Executar o Servidor Flask**
-```sh
-python app.py
-```
-O servidor iniciará em `http://127.0.0.1:5000`.
-
-### **3. Configurar o Cliente Electron**
-#### **Instalar dependências**
-```sh
-cd ../electron-client
+2. Instalar dependências:
+```bash
+pip install flask flask-cors requests nats-py
+cd electron-client
 npm install
 ```
 
-#### **Iniciar a Aplicação**
-```sh
+3. Iniciar os serviços:
+```bash
+start_nats.bat
+start_server.bat
+cd electron-client
 npm start
 ```
-A interface Electron abrirá mostrando o mapa e os controles.
 
-## **Como Usar**
-1. **Abrir a interface Electron**
-2. **Clicar em "Compartilhar Localização"** para enviar sua localização ao servidor.
-3. **Visualizar o mapa** atualizado em tempo real.
+---
 
-## **Próximos Passos**
-📌 **Salvar localizações no Firebase ou Redis** para persistência.
-📌 **Criar grupos privados** para compartilhamento entre amigos.
-📌 **Adicionar autenticação de usuários**.
-📌 **Implementar versão mobile** para Android e iOS.
+## 🌐 Arquitetura do Sistema
 
-## **Contribuição**
-Se deseja contribuir com o projeto, sinta-se à vontade para abrir um Pull Request ou relatar issues.
+![Arquitetura](./docs/arquitetura-livetrack.png)
 
-## **Licença**
-Este projeto está sob a licença MIT.
+*Esquema mostrando comunicação entre NATS, Flask, Electron e Browser.*
+
+---
+
+## 🚀 Como Funciona
+
+- O cliente Electron conecta no servidor Flask.
+- Localizações são enviadas via NATS a cada 5 segundos.
+- As posições são atualizadas em tempo real no mapa.
+
+---
+
+## 📌 Roadmap Futuro
+
+- [ ] Suporte a grupos privados
+- [ ] Versão mobile Android/iOS
+- [ ] Histórico de localizações
+- [ ] Autenticação de usuários
+
+---
+
+## 🤝 Contribuições
+
+Pull requests são bem-vindos!  
+Sinta-se à vontade para abrir uma issue ou enviar melhorias.
+
+---
+
+## 📜 Licença
+
+Distribuído sob licença MIT.
 
 ---
 
 🔗 **Desenvolvido por Victor Brizante**
-

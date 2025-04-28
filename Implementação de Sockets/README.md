@@ -1,65 +1,108 @@
-# GPS Live Tracker
 
-## Requisitos
+# 🚀 GPS Live Tracker
+
+Sistema distribuído para rastreamento de usuários em tempo real usando **Python**, **Electron** e **NATS**.
+
+---
+
+## 📦 Requisitos
 - Python 3.x
-- Node.js e npm
+- Node.js + npm
+- NATS Server instalado
 
-## Arquivos Necessários
+---
+
+## 📁 Estrutura do Projeto
+
 ```
-Implementação de Sockets/
-├── server.py              # Servidor principal
-├── client.py             # Cliente Python
-├── start_server.bat      # Script para iniciar o servidor
-├── templates/            # Arquivos de template
+Live Tracker/
+├── server.py               # Servidor Flask + NATS
+├── client.py               # Cliente Python (envio de localização)
+├── start_server.bat        # Script para iniciar servidor Flask
+├── start_nats.bat          # Script para iniciar somente NATS
+├── templates/              # Templates HTML
 │   ├── manifest.json
 │   └── map.html
-└── electron-client/      # Cliente Electron
+└── electron-client/        # Cliente Desktop Electron
     ├── index.js
     ├── package.json
     └── package-lock.json
 ```
 
-## Instalação
+---
 
-1. Instale as dependências Python:
+## ⚙️ Instalação
+
+### Dependências Python
 ```bash
-pip install flask flask-cors psutil websockets
+pip install flask flask-cors requests nats-py
 ```
 
-2. Na pasta electron-client, instale as dependências Node.js:
+### Dependências Node.js
 ```bash
 cd electron-client
 npm install
 ```
 
-## Como Executar
+### NATS Server
+- Download: [NATS Downloads](https://docs.nats.io/running-a-nats-service/introduction/installation)
 
-### Servidor
-1. Execute o arquivo `start_server.bat` ou
-2. Execute diretamente: `python server.py`
+---
 
-### Cliente Electron
-1. Na pasta electron-client:
+## 🏃‍♂️ Como Executar
+
+### 1. Iniciar NATS Server
 ```bash
+start_nats.bat
+```
+
+
+### 2. Iniciar Servidor Flask
+```bash
+start_server.bat
+```
+ou manualmente:
+```bash
+python server.py
+```
+
+### 3. Iniciar Cliente Electron
+```bash
+cd electron-client
 npm start
 ```
 
-### Cliente Python
-1. Execute:
+### 4. Executar Cliente Python (opcional)
 ```bash
-python client.py
+python client.py SeuNomeDeUsuario
 ```
 
-## Portas Utilizadas
-- 5000: Servidor TCP
-- 6790: WebSocket
-- 8000: Servidor Flask
+---
 
-Certifique-se de que estas portas estão disponíveis antes de executar o servidor.
+## 🌐 Portas Utilizadas
 
-## Solução de Problemas
+| Serviço | Porta | Observações |
+|:--------|:------|:------------|
+| NATS Server (TCP) | 4222 | Comunicação com clientes Python |
+| NATS WebSocket | 9222 | Comunicação com navegador (map.html) |
+| Flask | 8000 | Servir o frontend |
+| NATS Monitoramento | 8222 | Painel de administração NATS |
 
-Se receber mensagens sobre portas em uso:
-1. Feche qualquer aplicação que possa estar usando as portas 5000, 6790 ou 8000
-2. Use o Task Manager para identificar e fechar processos que possam estar usando essas portas
-3. Ou execute no CMD: `netstat -ano | findstr "5000 6790 8000"` para ver quais processos estão usando as portas
+---
+
+## ❓ Solução de Problemas
+
+- **Verificar portas ocupadas**
+```bash
+netstat -ano | findstr "4222 9222 8000"
+```
+
+- **Matar processos travados**
+```bash
+taskkill /PID <número do processo> /F
+```
+
+- **Avisos de Segurança Electron**
+  - São normais em ambiente de desenvolvimento.
+  - Serão removidos ao empacotar a aplicação.
+
