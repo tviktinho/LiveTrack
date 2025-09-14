@@ -6,7 +6,7 @@ from flask import Flask, render_template, jsonify, send_from_directory
 from flask_cors import CORS
 from nats.aio.client import Client as NATS
 
-NATS_SERVER = "nats://localhost:4222"
+NATS_SERVER = "nats://35.238.213.13:4222"
 nats_client = NATS()
 
 app = Flask(__name__)
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     threading.Thread(
         target=app.run,
         kwargs={"host": "0.0.0.0", "port": 8000, "debug": False},
-        daemon=True  # <- daemon=True aqui!
+        daemon=True 
     ).start()
     
     loop.run_forever()

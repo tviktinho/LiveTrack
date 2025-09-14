@@ -5,7 +5,7 @@ import requests
 from nats.aio.client import Client as NATS
 from nats.aio.errors import ErrConnectionClosed, ErrTimeout, ErrNoServers
 
-NATS_SERVER = "nats://localhost:4222"
+NATS_SERVER = "nats://35.238.213.13:4222"
 userName = sys.argv[1] if len(sys.argv) > 1 else "usuario-desconhecido"
 nats_client = NATS()
 

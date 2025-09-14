@@ -83,24 +83,21 @@
       async function connectNATS() {
         try {
           if (!nc) {
-            nc = await connect({ servers: "ws://localhost:9222" });
+            nc = await connect({ servers: "ws://35.238.213.13:9222" });
             console.log("[NATS] Conectado com sucesso!");
       
             const sub = nc.subscribe("locations");
             (async () => {
               for await (const msg of sub) {
-                console.log("[NATS] Mensagem recebida bruta:", msg.data);
-      
-                // Verifica se a mensagem é uma string
                 const decoded = new TextDecoder().decode(msg.data);
-                console.log("[NATS] Decodificado:", decoded);
-      
-                const data = JSON.parse(decoded); // Agora parseia
-                console.log("[NATS] Parseado JSON:", data);
-      
+                const data = JSON.parse(decoded);
+              
                 currentData[data.username] = { lat: data.lat, lon: data.lon };
-                updateMarker(data.username, data.lat, data.lon);
+                updateMap(currentData); // <- sempre atualiza o mapa inteiro
                 updateClientList();
+
+                console.log("[NATS] Mensagem recebida:", data);
+                console.log("[DEBUG] Atualizando mapa com:", currentData);
               }
             })();
           }
@@ -124,16 +121,23 @@
       }
 
       function updateClientList() {
-        let clientList = document.getElementById("client-list");
-        clientList.innerHTML = "";
+        const clientList = document.getElementById("client-list");
+        clientList.innerHTML = ""; // limpa a lista
+      
+        const seen = new Set();
+      
         Object.keys(markers).forEach((client) => {
-          let li = document.createElement("li");
+          if (seen.has(client)) return;
+          seen.add(client);
+      
+          const li = document.createElement("li");
           li.className = "list-group-item";
           li.textContent = client;
           li.onclick = () => zoomToClient(client);
           clientList.appendChild(li);
         });
       }
+      
 
       function zoomToClient(clientId) {
         if (markers[clientId]) {
@@ -142,17 +146,21 @@
       }
 
       function updateMap(data) {
-        console.log("[DEBUG] Dados recebidos para update:", data);
+        console.log("[DEBUG] Atualizando mapa com:", data);
         for (const [client, info] of Object.entries(data)) {
           if (!markers[client]) {
             markers[client] = L.marker([info.lat, info.lon])
               .addTo(map)
               .bindPopup(`Usuário: ${client}`);
           } else {
-            markers[client].setLatLng([info.lat, info.lon]);
+            const current = markers[client].getLatLng();
+            if (current.lat !== info.lat || current.lng !== info.lon) {
+              markers[client].setLatLng([info.lat, info.lon]);
+            }
           }
         }
       }
+      
 
       function disconnectUser() {
         if (nc) {

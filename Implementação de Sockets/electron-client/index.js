@@ -8,8 +8,7 @@ let userName = '';
 
 async function setupNats() {
     try {
-        const nc = await connect({ servers: "nats://localhost:4222" });
-
+        const nc = await connect({ servers: "nats://35.238.213.13:4222" });
         console.log("[NATS] Conectado ao servidor NATS.");
 
         const sub = nc.subscribe("locations");
@@ -98,7 +97,7 @@ async function createWindow() {
     });
 
     //win.loadURL('http://192.168.1.100:8000');
-    win.loadURL('http://127.0.0.1:8000');
+    win.loadURL('http://35.238.213.13:8000');
 
 
 }
